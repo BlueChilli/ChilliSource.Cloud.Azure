@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using System.Linq;
 
 namespace ChilliSource.Cloud.Azure.Tests
 {
@@ -66,6 +67,53 @@ namespace ChilliSource.Cloud.Azure.Tests
 
             // Assert
             _blobItemMock.Verify();
+            _blobContainerMock.Verify();
+        }
+
+        [Fact]
+        public async Task GetContentAsync_ShouldReturnFile()
+        {
+            _blobContainerMock.Setup(x => x.GetBlobReference(It.IsAny<string>()))
+                .Returns(_blobItemMock.Object)
+                .Verifiable();
+            //_blobContainerMock.SetupProperty(x => x.)
+
+            var stream = new MemoryStream();
+            using(var writer = new StreamWriter(stream))
+            {
+                const string Text = "this is a test file";
+                await writer.WriteAsync(Text);
+                await writer.FlushAsync();
+
+                var prop = _blobItemMock.Object.Properties;
+
+                var lengthProp = prop.GetType().GetProperties().FirstOrDefault(m => m.Name == nameof(BlobProperties.Length));
+                lengthProp.SetValue(prop, Text.Length);
+                prop.ContentType = "text/plain";
+
+                _blobItemMock.Setup(x => x.OpenReadAsync())
+                    .Returns(Task<Stream>.FromResult<Stream>(stream))
+                    .Verifiable();
+
+                await _azureStorageFixture.GetContentAsync("testfile.txt");
+
+                // Assert
+                _blobItemMock.Verify();
+                _blobContainerMock.Verify();
+
+            }
+        }
+
+        [Fact]
+        public async Task ExistsAsync_ShouldReturnTrueIfFileExists()
+        {
+            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
+                .Returns(Task<ICloudBlob>.FromResult<ICloudBlob>(_blobItemMock.Object))
+                .Verifiable();
+
+            await _azureStorageFixture.ExistsAsync("testfile.txt");
+
+            // Assert
             _blobContainerMock.Verify();
         }
     }
