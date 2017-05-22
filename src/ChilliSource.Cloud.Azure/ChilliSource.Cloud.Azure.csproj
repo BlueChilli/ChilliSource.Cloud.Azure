@@ -28,7 +28,8 @@
 
   <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs" Link="Properties\CommonAssemblyInfo.cs" />
-    <PackageReference Include="ChilliSource.Cloud.Core" Version="1.0.0" />
+    <PackageReference Include="ChilliSource.Cloud.Core" Version="1.0.0-alpha0077" />
+    <PackageReference Include="ChilliSource.Core.Extensions" Version="1.0.0" />
     <PackageReference Include="ImageResizer" Version="3.4.3" />
     <PackageReference Include="Microsoft.Azure.KeyVault.Core" Version="1.0.0" />
     <PackageReference Include="Microsoft.Data.Edm" Version="5.8.2" />

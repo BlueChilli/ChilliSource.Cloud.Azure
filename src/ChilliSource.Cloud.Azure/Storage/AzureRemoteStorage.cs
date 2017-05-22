@@ -1,4 +1,5 @@
 ﻿using ChilliSource.Cloud.Core;
+using ChilliSource.Core.Extensions;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -31,6 +32,10 @@ namespace ChilliSource.Cloud.Azure
             _storageContainer = String.IsNullOrWhiteSpace(_azureConfig.Container) ?
                                     blobClient.GetRootContainerReference() :
                                     blobClient.GetContainerReference(_azureConfig.Container);
+        }
+        internal AzureRemoteStorage(CloudBlobContainer container)
+        {
+            _storageContainer = container;
         }
 
         public async Task SaveAsync(Stream stream, string fileName, string contentType)
