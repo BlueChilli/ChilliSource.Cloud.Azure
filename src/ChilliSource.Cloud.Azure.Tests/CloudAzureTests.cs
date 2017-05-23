@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using System.Linq;
+using Microsoft.WindowsAzure.Storage;
+using System.Net;
 
 namespace ChilliSource.Cloud.Azure.Tests
 {
@@ -16,7 +18,7 @@ namespace ChilliSource.Cloud.Azure.Tests
         private readonly AzureRemoteStorage _azureStorageFixture;
         public CloudAzureTests()
         {
-            var blobUriMock = new Uri("http://bogus/myaccount/blob");
+            var blobUriMock = new Uri("http://test/myaccount/blob");
             if (_blobItemMock == null)
                 _blobItemMock = new Mock<CloudBlockBlob>(blobUriMock);
 
@@ -26,12 +28,6 @@ namespace ChilliSource.Cloud.Azure.Tests
             if (_azureStorageFixture == null)
                 _azureStorageFixture = new AzureRemoteStorage(_blobContainerMock.Object);
         }
-
-        //[Fact]
-        //public async Task SaveAsync_ShouldNotFailSave_WhenContentIsNotProvided()
-        //{
-
-        //}
 
         [Fact]
         public async Task SaveAsync_ShouldSaveFile()
@@ -47,7 +43,6 @@ namespace ChilliSource.Cloud.Azure.Tests
 
             await _azureStorageFixture.SaveAsync(fakePackageFile, "testfile.txt", "text/plain");
 
-            // Assert
             _blobItemMock.Verify();
             _blobContainerMock.Verify();
         }
@@ -65,7 +60,6 @@ namespace ChilliSource.Cloud.Azure.Tests
 
             await _azureStorageFixture.DeleteAsync("testfile.txt");
 
-            // Assert
             _blobItemMock.Verify();
             _blobContainerMock.Verify();
         }
@@ -76,7 +70,6 @@ namespace ChilliSource.Cloud.Azure.Tests
             _blobContainerMock.Setup(x => x.GetBlobReference(It.IsAny<string>()))
                 .Returns(_blobItemMock.Object)
                 .Verifiable();
-            //_blobContainerMock.SetupProperty(x => x.)
 
             var stream = new MemoryStream();
             using(var writer = new StreamWriter(stream))
@@ -97,10 +90,8 @@ namespace ChilliSource.Cloud.Azure.Tests
 
                 await _azureStorageFixture.GetContentAsync("testfile.txt");
 
-                // Assert
                 _blobItemMock.Verify();
                 _blobContainerMock.Verify();
-
             }
         }
 
@@ -113,8 +104,31 @@ namespace ChilliSource.Cloud.Azure.Tests
 
             await _azureStorageFixture.ExistsAsync("testfile.txt");
 
-            // Assert
             _blobContainerMock.Verify();
+        }
+
+        [Fact]
+        public async Task ExistsAsync_WillThrowIfFileDoesNotExist()
+        {
+            var result = new RequestResult { HttpStatusCode = (int)HttpStatusCode.NotFound };
+            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
+                .Throws(new StorageException(result, string.Empty, new Exception()))
+                .Verifiable();
+
+            var exists = await _azureStorageFixture.ExistsAsync("testfile.txt");
+            _blobContainerMock.Verify();
+
+            Assert.False(exists);
+        }
+
+        [Fact]
+        public void ExistsAsync_WillThrowIfFileIsEmpty()
+        {
+            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
+                .Throws(new StorageException())
+                .Verifiable();
+
+            Assert.ThrowsAsync<StorageException>(() => _azureStorageFixture.ExistsAsync(string.Empty));
         }
     }
 }
