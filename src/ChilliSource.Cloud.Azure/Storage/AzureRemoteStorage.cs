@@ -58,23 +58,25 @@ namespace ChilliSource.Cloud.Azure
 
         public async Task<FileStorageResponse> GetContentAsync(string fileName)
         {
+            Stream blobStream = null;
             var fileRef = _storageContainer.GetBlobReference(fileName);
 
-            using (var stream = await fileRef.OpenReadAsync()
-                               .IgnoreContext())
+            try
             {
+                blobStream = await fileRef.OpenReadAsync()
+                               .IgnoreContext();
+
                 var contentLength = fileRef.Properties.Length;
                 var contentType = fileRef.Properties.ContentType;
 
-                var memStream = new MemoryStream((int)contentLength);
-                await stream.CopyToAsync(memStream, Math.Min(80 * 1024, (int)contentLength))
-                       .IgnoreContext();
+                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, contentLength);
 
-                memStream.Position = 0;
-
-                //lastModified = fileRef.Properties.LastModified?.UtcDateTime ?? new DateTime(0, DateTimeKind.Utc);            
-
-                return FileStorageResponse.Create(fileName, contentLength, contentType, memStream);
+                return FileStorageResponse.Create(fileName, contentLength, contentType, readonlyStream);
+            }
+            catch
+            {
+                blobStream?.Dispose();
+                throw;
             }
         }
 
