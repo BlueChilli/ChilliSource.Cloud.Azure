@@ -69,7 +69,7 @@ namespace ChilliSource.Cloud.Azure
                 var contentLength = fileRef.Properties.Length;
                 var contentType = fileRef.Properties.ContentType;
 
-                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, contentLength);
+                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), contentLength);
 
                 return FileStorageResponse.Create(fileName, contentLength, contentType, readonlyStream);
             }
