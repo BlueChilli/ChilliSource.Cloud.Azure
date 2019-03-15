@@ -9,6 +9,9 @@ using System.Web.Hosting;
 using System.Web;
 using System.IO;
 using System.Linq.Expressions;
+using ImageResizer.ExtensionMethods;
+using System.Security;
+using ImageResizer.Configuration.Issues;
 
 namespace ChilliSource.Cloud.Azure
 {
@@ -20,6 +23,7 @@ namespace ChilliSource.Cloud.Azure
         private bool _cacheUnmodified;
 
         private string _prefix;
+        private bool _asVpp;
         private AzureVirtualPathProvider _pathProvider;
 
         public AzureReader(System.Collections.Specialized.NameValueCollection args)
@@ -27,6 +31,7 @@ namespace ChilliSource.Cloud.Azure
             this._connectionString = args["connectionstring"] ?? "";
             this._endpoint = args["endpoint"] ?? "";
             this._prefix = args["prefix"] ?? "";
+            this._asVpp = NameValueCollectionExtensions.Get(args, "vpp", true);
             this._cacheUnmodified = Convert.ToBoolean(args["cacheunmodified"] ?? "true");
 
             if (string.IsNullOrEmpty(this._endpoint))
@@ -57,9 +62,23 @@ namespace ChilliSource.Cloud.Azure
             }
 
             this._pathProvider = new AzureVirtualPathProvider(this._connectionString, this._prefix);
-            HostingEnvironment.RegisterVirtualPathProvider(this._pathProvider);
-
             c.Pipeline.PostRewrite += this.Pipeline_PostRewrite;
+
+            if (this._asVpp)
+            {
+                try
+                {
+                    HostingEnvironment.RegisterVirtualPathProvider((VirtualPathProvider)this._pathProvider);
+                }
+                catch (SecurityException ex)
+                {
+                    this._asVpp = false;
+                    c.configurationSectionIssues.AcceptIssue((IIssue)new Issue("AzureReader", "AzureReader could not be installed as a VirtualPathProvider due to missing AspNetHostingPermission.", "It was installed as an IVirtualImageProvider instead, which means that only image URLs will be accessible, and only if they contain a querystring.\nSet vpp=false to tell AzureReader to register as an IVirtualImageProvider instead. <add name='AzureReader' vpp=false />", IssueSeverity.Error));
+                }
+            }
+            if (!this._asVpp)
+                c.Plugins.VirtualProviderPlugins.Add(this._pathProvider);
+
             c.Plugins.add_plugin(this);
 
             _installed = true;
@@ -82,13 +101,10 @@ namespace ChilliSource.Cloud.Azure
 
         public bool Uninstall(Config c)
         {
-            //c.Plugins.VirtualProviderPlugins.Remove(this._pathProvider);
-            //c.Plugins.remove_plugin(this);
-            //this._installed = false;
-
-            //return true;
-
-            return false;
+            if (this._asVpp)
+                return false;
+            c.Plugins.VirtualProviderPlugins.Remove(this._pathProvider);
+            return true;
         }
     }
 }

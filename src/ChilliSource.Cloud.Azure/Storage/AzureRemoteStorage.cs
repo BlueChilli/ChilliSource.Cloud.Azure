@@ -1,4 +1,5 @@
 ﻿using ChilliSource.Cloud.Core;
+using ChilliSource.Core.Extensions;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -12,18 +13,17 @@ using System.Threading.Tasks;
 
 namespace ChilliSource.Cloud.Azure
 {
-    internal class AzureRemoteStorage : IRemoteStorage
+    public class AzureRemoteStorage : IRemoteStorage
     {
-        private AzureStorageElement _azureConfig;
+        private AzureStorageConfiguration _azureConfig;
         private CloudBlobContainer _storageContainer;
 
-        public AzureRemoteStorage(AzureStorageElement azureConfig)
+        public AzureRemoteStorage(AzureStorageConfiguration azureConfig)
         {
-            _azureConfig = azureConfig ?? ProjectConfigurationSection.GetConfig().FileStorage?.Azure;
+            if (azureConfig == null)
+                throw new ArgumentNullException("azureConfig is required.");
 
-            //var storageAccount = CloudStorageAccount.Parse("DefaultEndpointsProtocol=https;AccountName=;AccountKey=");
-            if (_azureConfig == null)
-                throw new ApplicationException("Azure storage element not found in the configuration file");
+            _azureConfig = azureConfig;
 
             var storageAccount = new CloudStorageAccount(new StorageCredentials(_azureConfig.AccountName, _azureConfig.AccountKey), useHttps: true);
             var blobClient = storageAccount.CreateCloudBlobClient();
@@ -31,6 +31,10 @@ namespace ChilliSource.Cloud.Azure
             _storageContainer = String.IsNullOrWhiteSpace(_azureConfig.Container) ?
                                     blobClient.GetRootContainerReference() :
                                     blobClient.GetContainerReference(_azureConfig.Container);
+        }
+        internal AzureRemoteStorage(CloudBlobContainer container)
+        {
+            _storageContainer = container;
         }
 
         public async Task SaveAsync(Stream stream, string fileName, string contentType)
@@ -54,23 +58,25 @@ namespace ChilliSource.Cloud.Azure
 
         public async Task<FileStorageResponse> GetContentAsync(string fileName)
         {
+            Stream blobStream = null;
             var fileRef = _storageContainer.GetBlobReference(fileName);
 
-            using (var stream = await fileRef.OpenReadAsync()
-                               .IgnoreContext())
+            try
             {
+                blobStream = await fileRef.OpenReadAsync()
+                               .IgnoreContext();
+
                 var contentLength = fileRef.Properties.Length;
                 var contentType = fileRef.Properties.ContentType;
 
-                var memStream = new MemoryStream((int)contentLength);
-                await stream.CopyToAsync(memStream, Math.Min(80 * 1024, (int)contentLength))
-                       .IgnoreContext();
+                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), contentLength);
 
-                memStream.Position = 0;
-
-                //lastModified = fileRef.Properties.LastModified?.UtcDateTime ?? new DateTime(0, DateTimeKind.Utc);            
-
-                return FileStorageResponse.Create(fileName, contentLength, contentType, memStream);
+                return FileStorageResponse.Create(fileName, contentLength, contentType, readonlyStream);
+            }
+            catch
+            {
+                blobStream?.Dispose();
+                throw;
             }
         }
 
@@ -90,6 +96,11 @@ namespace ChilliSource.Cloud.Azure
                 }
                 throw;
             }
+        }
+
+        public string GetPartialFilePath(string fileName)
+        {
+            return String.IsNullOrEmpty(_azureConfig.Container) ? fileName : $"{_azureConfig.Container}/{fileName}";
         }
     }
 }
