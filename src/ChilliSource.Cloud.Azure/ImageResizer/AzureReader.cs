@@ -1,4 +1,5 @@
-﻿using ImageResizer.Plugins;
+﻿#if NET_4X
+using ImageResizer.Plugins;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -108,3 +109,4 @@ namespace ChilliSource.Cloud.Azure
         }
     }
 }
+#endif
