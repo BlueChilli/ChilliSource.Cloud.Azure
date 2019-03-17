@@ -80,6 +80,27 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 
+        internal async Task<BlobProperties> GetMetadata(string fileName)
+        {
+            try
+            {
+                var fileRef = await _storageContainer.GetBlobReferenceFromServerAsync(fileName)
+                              .IgnoreContext();
+
+                await fileRef.FetchAttributesAsync();
+
+                return fileRef.Properties;
+            }
+            catch (StorageException ex)
+            {
+                if (ex.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound)
+                {
+                    return null;
+                }
+                throw;
+            }
+        }
+
         public async Task<bool> ExistsAsync(string fileName)
         {
             try
