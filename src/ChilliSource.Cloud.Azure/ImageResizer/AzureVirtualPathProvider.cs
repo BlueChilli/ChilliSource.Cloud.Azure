@@ -1,4 +1,5 @@
-﻿using ImageResizer.Plugins;
+﻿#if NET_4X
+using ImageResizer.Plugins;
 using ImageResizer.Util;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -112,3 +113,4 @@ namespace ChilliSource.Cloud.Azure
         }
     }
 }
+#endif

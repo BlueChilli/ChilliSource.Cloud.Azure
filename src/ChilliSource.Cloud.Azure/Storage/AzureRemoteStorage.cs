@@ -98,9 +98,12 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 
+#if NET_4X
+        [Obsolete]
         public string GetPartialFilePath(string fileName)
         {
             return String.IsNullOrEmpty(_azureConfig.Container) ? fileName : $"{_azureConfig.Container}/{fileName}";
         }
+#endif
     }
 }
