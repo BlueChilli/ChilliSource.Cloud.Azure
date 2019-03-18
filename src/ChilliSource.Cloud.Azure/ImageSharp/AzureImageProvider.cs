@@ -1,4 +1,5 @@
 ﻿#if !NET_4X
+using ChilliSource.Core.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,11 +72,12 @@ namespace ChilliSource.Cloud.Azure.ImageSharp
             var fileName = GetAzureFileName(context);
             if (String.IsNullOrEmpty(fileName))
                 return null;
-
-            var metadata = await remoteStorage.GetMetadata(fileName);
+            
+            var metadata = await remoteStorage.GetMetadataAsync(fileName, context.RequestAborted)
+                                 .IgnoreContext();
             if (metadata != null)
             {
-                return new AzureImageResolver(remoteStorage, fileName, metadata);
+                return new AzureImageResolver(remoteStorage, metadata);
             }
 
             return null;

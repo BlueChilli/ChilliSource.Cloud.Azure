@@ -33,7 +33,7 @@ namespace ChilliSource.Cloud.Azure.Tests
         public async Task SaveAsync_ShouldSaveFile()
         {
             var fakePackageFile = new MemoryStream();
-            _blobItemMock.Setup(x => x.UploadFromStreamAsync(It.IsAny<Stream>()))
+            _blobItemMock.Setup(x => x.UploadFromStreamAsync(It.IsAny<Stream>(), CancellationToken.None))
                 .Returns(Task.FromResult(0))
                 .Verifiable();
 
@@ -54,7 +54,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 .Returns(_blobItemMock.Object)
                 .Verifiable();
 
-            _blobItemMock.Setup(x => x.DeleteIfExistsAsync())
+            _blobItemMock.Setup(x => x.DeleteIfExistsAsync(CancellationToken.None))
                 .Returns(Task<bool>.FromResult<bool>(false))
                 .Verifiable();
 
@@ -84,7 +84,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 lengthProp.SetValue(prop, Text.Length);
                 prop.ContentType = "text/plain";
 
-                _blobItemMock.Setup(x => x.OpenReadAsync())
+                _blobItemMock.Setup(x => x.OpenReadAsync(CancellationToken.None))
                     .Returns(Task<Stream>.FromResult<Stream>(stream))
                     .Verifiable();
 
@@ -98,8 +98,12 @@ namespace ChilliSource.Cloud.Azure.Tests
         [Fact]
         public async Task ExistsAsync_ShouldReturnTrueIfFileExists()
         {
-            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
-                .Returns(Task<ICloudBlob>.FromResult<ICloudBlob>(_blobItemMock.Object))
+            _blobContainerMock.Setup(x => x.GetBlobReference(It.IsAny<string>()))
+                .Returns(_blobItemMock.Object)
+                .Verifiable();
+
+            _blobItemMock.Setup(x => x.FetchAttributesAsync(CancellationToken.None))
+                .Returns(Task.CompletedTask)
                 .Verifiable();
 
             await _azureStorageFixture.ExistsAsync("testfile.txt");
@@ -111,7 +115,12 @@ namespace ChilliSource.Cloud.Azure.Tests
         public async Task ExistsAsync_WillThrowIfFileDoesNotExist()
         {
             var result = new RequestResult { HttpStatusCode = (int)HttpStatusCode.NotFound };
-            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
+
+            _blobContainerMock.Setup(x => x.GetBlobReference(It.IsAny<string>()))
+                .Returns(_blobItemMock.Object)
+                .Verifiable();
+
+            _blobItemMock.Setup(x => x.FetchAttributesAsync(CancellationToken.None))
                 .Throws(new StorageException(result, string.Empty, new Exception()))
                 .Verifiable();
 
@@ -119,16 +128,6 @@ namespace ChilliSource.Cloud.Azure.Tests
             _blobContainerMock.Verify();
 
             Assert.False(exists);
-        }
-
-        [Fact]
-        public void ExistsAsync_WillThrowIfFileIsEmpty()
-        {
-            _blobContainerMock.Setup(x => x.GetBlobReferenceFromServerAsync(It.IsAny<string>()))
-                .Throws(new StorageException())
-                .Verifiable();
-
-            Assert.ThrowsAsync<StorageException>(() => _azureStorageFixture.ExistsAsync(string.Empty));
-        }
+        }     
     }
 }

@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChilliSource.Cloud.Azure
@@ -37,41 +38,66 @@ namespace ChilliSource.Cloud.Azure
             _storageContainer = container;
         }
 
+#if NET_4X
         public async Task SaveAsync(Stream stream, string fileName, string contentType)
         {
+            CancellationToken cancellationToken = CancellationToken.None;
+#else
+        public async Task SaveAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken)
+        {
+#endif
             var fileRef = _storageContainer.GetBlockBlobReference(fileName);
             if (!String.IsNullOrEmpty(contentType))
             {
                 fileRef.Properties.ContentType = contentType;
             }
 
-            await fileRef.UploadFromStreamAsync(stream)
+            await fileRef.UploadFromStreamAsync(stream, cancellationToken)
                   .IgnoreContext();
         }
 
+#if NET_4X
         public async Task DeleteAsync(string fileToDelete)
         {
+            CancellationToken cancellationToken = CancellationToken.None;
+#else
+        public async Task DeleteAsync(string fileToDelete, CancellationToken cancellationToken)
+        {
+#endif
             var fileRef = _storageContainer.GetBlobReference(fileToDelete);
-            await fileRef.DeleteIfExistsAsync()
+            await fileRef.DeleteIfExistsAsync(cancellationToken)
                   .IgnoreContext();
         }
 
+#if NET_4X
         public async Task<FileStorageResponse> GetContentAsync(string fileName)
         {
-            Stream blobStream = null;
+            CancellationToken cancellationToken = CancellationToken.None;
+#else
+        public async Task<FileStorageResponse> GetContentAsync(string fileName, CancellationToken cancellationToken)
+        {
+#endif
             var fileRef = _storageContainer.GetBlobReference(fileName);
+
+            return await GetContentFromBlobAsync(fileRef, cancellationToken)
+                         .IgnoreContext();
+        }
+
+        internal async Task<FileStorageResponse> GetContentFromBlobAsync(CloudBlob fileRef, CancellationToken cancellationToken)
+        {
+            Stream blobStream = null;
 
             try
             {
-                blobStream = await fileRef.OpenReadAsync()
-                               .IgnoreContext();
+                blobStream = await fileRef.OpenReadAsync(cancellationToken)
+                                   .IgnoreContext();
 
                 var contentLength = fileRef.Properties.Length;
                 var contentType = fileRef.Properties.ContentType;
 
                 var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), contentLength);
 
-                return FileStorageResponse.Create(fileName, contentLength, contentType, readonlyStream);
+                return FileStorageResponse.Create(fileRef.Name, contentLength, contentType, readonlyStream);
             }
             catch
             {
@@ -80,16 +106,16 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 
-        internal async Task<BlobProperties> GetMetadata(string fileName)
+        internal async Task<CloudBlob> GetMetadataAsync(string fileName, CancellationToken cancellationToken)
         {
             try
             {
-                var fileRef = await _storageContainer.GetBlobReferenceFromServerAsync(fileName)
-                              .IgnoreContext();
+                var fileRef = _storageContainer.GetBlobReference(fileName);
 
-                await fileRef.FetchAttributesAsync();
+                await fileRef.FetchAttributesAsync(cancellationToken)
+                      .IgnoreContext();
 
-                return fileRef.Properties;
+                return fileRef;
             }
             catch (StorageException ex)
             {
@@ -101,22 +127,15 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 
+#if NET_4X
         public async Task<bool> ExistsAsync(string fileName)
         {
-            try
-            {
-                var fileRef = await _storageContainer.GetBlobReferenceFromServerAsync(fileName)
-                              .IgnoreContext();
-                return true;
-            }
-            catch (StorageException ex)
-            {
-                if (ex.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound)
-                {
-                    return false;
-                }
-                throw;
-            }
+            CancellationToken cancellationToken = CancellationToken.None;
+#else
+        public async Task<bool> ExistsAsync(string fileName, CancellationToken cancellationToken)
+        {
+#endif
+            return (await GetMetadataAsync(fileName, cancellationToken).IgnoreContext()) != null;
         }
 
 #if NET_4X
