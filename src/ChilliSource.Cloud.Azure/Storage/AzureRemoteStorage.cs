@@ -41,20 +41,52 @@ namespace ChilliSource.Cloud.Azure
 #if NET_4X
         public async Task SaveAsync(Stream stream, string fileName, string contentType)
         {
-            CancellationToken cancellationToken = CancellationToken.None;
-#else
-        public async Task SaveAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken)
-        {
-#endif
             var fileRef = _storageContainer.GetBlockBlobReference(fileName);
             if (!String.IsNullOrEmpty(contentType))
             {
                 fileRef.Properties.ContentType = contentType;
             }
 
+            await fileRef.UploadFromStreamAsync(stream, CancellationToken.None)
+                  .IgnoreContext();
+        }
+#else
+        public async Task SaveAsync(Stream stream, string fileName, string contentType, CancellationToken cancellationToken)
+        {
+            await SaveAsync(stream, new FileStorageMetadataInfo()
+            {
+                FileName = fileName,
+                ContentType = contentType
+            }, cancellationToken);
+        }
+
+        public async Task SaveAsync(Stream stream, FileStorageMetadataInfo metadata, CancellationToken cancellationToken)
+        {            
+            var fileRef = _storageContainer.GetBlockBlobReference(metadata.FileName);
+            if (!String.IsNullOrEmpty(metadata.CacheControl))
+            {
+                fileRef.Properties.CacheControl = metadata.CacheControl;
+            }
+
+            if (!String.IsNullOrEmpty(metadata.ContentDisposition))
+            {
+                fileRef.Properties.ContentDisposition = metadata.ContentDisposition;
+            }
+
+            if (!String.IsNullOrEmpty(metadata.ContentEncoding))
+            {
+                fileRef.Properties.ContentEncoding = metadata.ContentEncoding;
+            }
+
+            if (!String.IsNullOrEmpty(metadata.ContentType))
+            {
+                fileRef.Properties.ContentType = metadata.ContentType;
+            }
+
             await fileRef.UploadFromStreamAsync(stream, cancellationToken)
                   .IgnoreContext();
         }
+#endif
 
 #if NET_4X
         public async Task DeleteAsync(string fileToDelete)
@@ -106,7 +138,7 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 
-        internal async Task<CloudBlob> GetMetadataAsync(string fileName, CancellationToken cancellationToken)
+        private async Task<CloudBlob> GetMetadataInternalAsync(string fileName, CancellationToken cancellationToken)
         {
             try
             {
@@ -135,7 +167,7 @@ namespace ChilliSource.Cloud.Azure
         public async Task<bool> ExistsAsync(string fileName, CancellationToken cancellationToken)
         {
 #endif
-            return (await GetMetadataAsync(fileName, cancellationToken).IgnoreContext()) != null;
+            return (await GetMetadataInternalAsync(fileName, cancellationToken).IgnoreContext()) != null;
         }
 
 #if NET_4X
@@ -143,6 +175,26 @@ namespace ChilliSource.Cloud.Azure
         public string GetPartialFilePath(string fileName)
         {
             return String.IsNullOrEmpty(_azureConfig.Container) ? fileName : $"{_azureConfig.Container}/{fileName}";
+        }
+#else
+        public async Task<IFileStorageMetadataResponse> GetMetadataAsync(string fileName, CancellationToken cancellationToken)
+        {
+            var azureMetadata = await GetMetadataInternalAsync(fileName, cancellationToken);
+            var properties = azureMetadata.Properties;
+            var lastMotified = properties.LastModified?.ToUniversalTime().UtcDateTime;
+
+            var metadata = new FileStorageMetadataResponse()
+            {
+                FileName = fileName,
+                CacheControl = properties.CacheControl,
+                ContentDisposition = properties.ContentDisposition,
+                ContentEncoding = properties.ContentEncoding,
+                ContentLength = properties.Length,
+                ContentType = properties.ContentType,
+                LastModifiedUtc = lastMotified ?? new DateTime(0, DateTimeKind.Utc)
+            };
+
+            return metadata;
         }
 #endif
     }
