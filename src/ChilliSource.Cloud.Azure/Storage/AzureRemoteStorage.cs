@@ -61,7 +61,7 @@ namespace ChilliSource.Cloud.Azure
         }
 
         public async Task SaveAsync(Stream stream, FileStorageMetadataInfo metadata, CancellationToken cancellationToken)
-        {            
+        {
             var fileRef = _storageContainer.GetBlockBlobReference(metadata.FileName);
             if (!String.IsNullOrEmpty(metadata.CacheControl))
             {
@@ -105,18 +105,7 @@ namespace ChilliSource.Cloud.Azure
         public async Task<FileStorageResponse> GetContentAsync(string fileName)
         {
             CancellationToken cancellationToken = CancellationToken.None;
-#else
-        public async Task<FileStorageResponse> GetContentAsync(string fileName, CancellationToken cancellationToken)
-        {
-#endif
             var fileRef = _storageContainer.GetBlobReference(fileName);
-
-            return await GetContentFromBlobAsync(fileRef, cancellationToken)
-                         .IgnoreContext();
-        }
-
-        internal async Task<FileStorageResponse> GetContentFromBlobAsync(CloudBlob fileRef, CancellationToken cancellationToken)
-        {
             Stream blobStream = null;
 
             try
@@ -137,6 +126,29 @@ namespace ChilliSource.Cloud.Azure
                 throw;
             }
         }
+#else
+        public async Task<FileStorageResponse> GetContentAsync(string fileName, CancellationToken cancellationToken)
+        {
+            var fileRef = _storageContainer.GetBlobReference(fileName);
+            Stream blobStream = null;
+
+            try
+            {
+                blobStream = await fileRef.OpenReadAsync(cancellationToken)
+                                   .IgnoreContext();
+
+                var metadata = MapMetadata(fileRef);
+                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), metadata.ContentLength);
+
+                return FileStorageResponse.Create(metadata, readonlyStream);
+            }
+            catch
+            {
+                blobStream?.Dispose();
+                throw;
+            }
+        }
+#endif
 
         private async Task<CloudBlob> GetMetadataInternalAsync(string fileName, CancellationToken cancellationToken)
         {
@@ -177,15 +189,14 @@ namespace ChilliSource.Cloud.Azure
             return String.IsNullOrEmpty(_azureConfig.Container) ? fileName : $"{_azureConfig.Container}/{fileName}";
         }
 #else
-        public async Task<IFileStorageMetadataResponse> GetMetadataAsync(string fileName, CancellationToken cancellationToken)
+        private IFileStorageMetadataResponse MapMetadata(CloudBlob blob)
         {
-            var azureMetadata = await GetMetadataInternalAsync(fileName, cancellationToken);
-            var properties = azureMetadata.Properties;
+            var properties = blob.Properties;
             var lastMotified = properties.LastModified?.ToUniversalTime().UtcDateTime;
 
             var metadata = new FileStorageMetadataResponse()
             {
-                FileName = fileName,
+                FileName = blob.Name,
                 CacheControl = properties.CacheControl,
                 ContentDisposition = properties.ContentDisposition,
                 ContentEncoding = properties.ContentEncoding,
@@ -195,6 +206,12 @@ namespace ChilliSource.Cloud.Azure
             };
 
             return metadata;
+        }
+
+        public async Task<IFileStorageMetadataResponse> GetMetadataAsync(string fileName, CancellationToken cancellationToken)
+        {
+            var azureMetadata = await GetMetadataInternalAsync(fileName, cancellationToken);
+            return MapMetadata(azureMetadata);
         }
 #endif
     }
