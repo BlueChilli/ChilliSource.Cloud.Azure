@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace ChilliSource.Cloud.Azure
 {
+    /// <summary>
+    /// IRemoteStorage implementation for Azure File Storage.
+    /// </summary>
     public class AzureRemoteStorage : IRemoteStorage
     {
         private AzureStorageConfiguration _azureConfig;
