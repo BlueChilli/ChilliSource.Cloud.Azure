@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net461;net462;</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <DebugType>full</DebugType>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
@@ -19,15 +19,7 @@
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='net461'">
-    <DefineConstants>$(DefineConstants);NET_4X</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)'=='net462'">
-    <DefineConstants>$(DefineConstants);NET_4X</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.0|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net6.0|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
@@ -35,16 +27,7 @@
     <Compile Include="..\CommonAssemblyInfo.cs" Link="Properties\CommonAssemblyInfo.cs" />
     <PackageReference Include="Microsoft.Azure.KeyVault.Core" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="9.4.2" />
-
-    <PackageReference Condition="'$(TargetFramework)'!='netstandard2.0'" Include="ImageResizer" Version="3.4.3" />
-    <PackageReference Condition="'$(TargetFramework)'!='netstandard2.0'" Include="ChilliSource.Cloud.Core" Version="1.0.1" />
-    <PackageReference Condition="'$(TargetFramework)'=='netstandard2.0'" Include="ChilliSource.Cloud.Core" Version="2.0.0-alpha0073" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Condition="'$(TargetFramework)'!='netstandard2.0'" Include="Microsoft.CSharp" />
-    <Reference Condition="'$(TargetFramework)'!='netstandard2.0'" Include="System.Configuration" />
-    <Reference Condition="'$(TargetFramework)'!='netstandard2.0'" Include="System.Web" />
+    <PackageReference Include="ChilliSource.Cloud.Core" Version="2.0.0-alpha0142" />
   </ItemGroup>
 
 </Project>

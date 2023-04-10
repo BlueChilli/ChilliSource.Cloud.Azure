@@ -41,7 +41,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 .Returns(_blobItemMock.Object)
                 .Verifiable();
 
-            await _azureStorageFixture.SaveAsync(fakePackageFile, "testfile.txt", "text/plain");
+            await _azureStorageFixture.SaveAsync(fakePackageFile, "testfile.txt", "text/plain", default(CancellationToken));
 
             _blobItemMock.Verify();
             _blobContainerMock.Verify();
@@ -58,7 +58,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 .Returns(Task<bool>.FromResult<bool>(false))
                 .Verifiable();
 
-            await _azureStorageFixture.DeleteAsync("testfile.txt");
+            await _azureStorageFixture.DeleteAsync("testfile.txt", default(CancellationToken));
 
             _blobItemMock.Verify();
             _blobContainerMock.Verify();
@@ -88,7 +88,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                     .Returns(Task<Stream>.FromResult<Stream>(stream))
                     .Verifiable();
 
-                await _azureStorageFixture.GetContentAsync("testfile.txt");
+                await _azureStorageFixture.GetContentAsync("testfile.txt", default(CancellationToken));
 
                 _blobItemMock.Verify();
                 _blobContainerMock.Verify();
@@ -106,7 +106,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 .Returns(Task.CompletedTask)
                 .Verifiable();
 
-            await _azureStorageFixture.ExistsAsync("testfile.txt");
+            await _azureStorageFixture.ExistsAsync("testfile.txt", default(CancellationToken));
 
             _blobContainerMock.Verify();
         }
@@ -124,7 +124,7 @@ namespace ChilliSource.Cloud.Azure.Tests
                 .Throws(new StorageException(result, string.Empty, new Exception()))
                 .Verifiable();
 
-            var exists = await _azureStorageFixture.ExistsAsync("testfile.txt");
+            var exists = await _azureStorageFixture.ExistsAsync("testfile.txt", default(CancellationToken));
             _blobContainerMock.Verify();
 
             Assert.False(exists);

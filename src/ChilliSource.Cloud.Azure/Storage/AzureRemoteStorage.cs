@@ -216,6 +216,11 @@ namespace ChilliSource.Cloud.Azure
             var azureMetadata = await GetMetadataInternalAsync(fileName, cancellationToken);
             return MapMetadata(azureMetadata);
         }
+
+        public string GetPreSignedUrl(string fileName, TimeSpan expiresIn)
+        {
+            throw new NotImplementedException();
+        }
 #endif
     }
 }
