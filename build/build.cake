@@ -251,8 +251,8 @@ Setup((context) =>
         }
         else
         {
-			Information(@"IsLocal: {0}, IsRepository: {1}, projectName: {2}, productName: {3}", local, isRepository, projectName, productName);
-			Information("Not running on TeamCity");
+			 Information(@"IsLocal: {0}, IsRepository: {1}, projectName: {2}, productName: {3}", local, isRepository, projectName, productName);
+             Information("Not running on TeamCity");
         }		
 
 		DeleteFiles("../src/**/*.tmp");
