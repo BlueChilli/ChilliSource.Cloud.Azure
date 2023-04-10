@@ -130,27 +130,28 @@ namespace ChilliSource.Cloud.Azure
             }
         }
 #else
-        public async Task<FileStorageResponse> GetContentAsync(string fileName, CancellationToken cancellationToken)
-        {
-            var fileRef = _storageContainer.GetBlobReference(fileName);
-            Stream blobStream = null;
+        //TODO FIX TEST
+        //public async Task<FileStorageResponse> GetContentAsync(string fileName, CancellationToken cancellationToken)
+        //{
+        //    var fileRef = _storageContainer.GetBlobReference(fileName);
+        //    Stream blobStream = null;
 
-            try
-            {
-                blobStream = await fileRef.OpenReadAsync(cancellationToken)
-                                   .IgnoreContext();
+        //    try
+        //    {
+        //        blobStream = await fileRef.OpenReadAsync(cancellationToken)
+        //                           .IgnoreContext();
 
-                var metadata = MapMetadata(fileRef);
-                var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), metadata.ContentLength);
+        //        var metadata = MapMetadata(fileRef);
+        //        var readonlyStream = ReadOnlyStreamWrapper.Create(blobStream, (s) => s?.Dispose(), metadata.ContentLength);
 
-                return FileStorageResponse.Create(metadata, readonlyStream);
-            }
-            catch
-            {
-                blobStream?.Dispose();
-                throw;
-            }
-        }
+        //        return FileStorageResponse.Create(metadata, readonlyStream);
+        //    }
+        //    catch
+        //    {
+        //        blobStream?.Dispose();
+        //        throw;
+        //    }
+        //}
 #endif
 
         private async Task<CloudBlob> GetMetadataInternalAsync(string fileName, CancellationToken cancellationToken)
